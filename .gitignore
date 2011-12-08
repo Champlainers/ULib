@@ -1,5 +1,22 @@
 
-/_ReSharper.ULib/*
+/ULib/_ReSharper.ULib/*
 
-/bin/*
-/obj/*
+/ULib/bin/*
+/ULib/obj/*
+
+/Testbed/Temp/*
+/Testbed/Library/*
+/Testbed/obj/*
+/Testbed/_ReSharper.TestBed/*
+
+
+!Testbed/Library/*.asset
+!Testbed/Library/AssetImportState
+!Testbed/Library/AssetVersioning.db
+!Testbed/Library/BuildPlayer.prefs
+!Testbed/Library/ScriptMapper
+!Testbed/Library/assetservercachev3
+!Testbed/Library/expandedItems
+!Testbed/Library/guidmapper
+!Testbed/Library/unity default resources
+!Testbed/Library/unity editor resources
