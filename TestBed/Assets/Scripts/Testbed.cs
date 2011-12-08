@@ -10,22 +10,26 @@ public class Testbed : MonoBehaviour
 	void Start () 
     {
         SoundManager.Instance.Init(true, true);
+        KeyboardInputManager.Instance.Init();
+
+        KeyboardInputManager.SubscribeToEvent(KeyCode.Space, KeyEventType.OnPressed, Play3DOneShot);
+        //KeyboardInputManager.SubscribeToEvent(KeyCode.W, KeyEventType.OnPressed, Play3DOneShot);
+        //KeyboardInputManager.SubscribeToEvent(KeyCode.W, KeyEventType.OnReleased, DebugTest);
 	}
-	
-	// Update is called once per frame
-	void Update ()
+
+
+    void PlaySoundQueue(object sender, EventArgs e)
     {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            SoundManager.Play3DSoundQueue(new[] {"Large", "Large"},testSubject1);
-        }
-        else if(Input.GetKeyDown(KeyCode.W))
-        {
-            SoundManager.Play3DSound(testSubject1,"Large");
-        }
+        SoundManager.Play3DSoundQueue(new[] {"Large", "Large"},testSubject1,1,"default",false);  
     }
 
-    void DebugTest()
+    void Play3DOneShot(object sender, EventArgs e)
+    {
+        SoundManager.Play3DSound(testSubject1, "Large");
+        
+    }
+
+    void DebugTest(object sender, EventArgs e)
     {
         Debug.Log("Callback");
     }

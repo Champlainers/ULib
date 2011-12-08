@@ -9,7 +9,12 @@
  * API for unity's sound engine. Supporting Sound Queues,
  * Sound playing with delagate callbacks.  
  *******************************************************/
-
+//TODO
+/* Add stopping to the queues
+ * 
+ * 
+ * 
+ */
 
 
 using System;
@@ -24,40 +29,48 @@ public class SoundManager : ComponentSingleton<SoundManager>
 {
     #region Helper Classes
     private class SoundQueue
+    {
+        private AudioSource source;
+        private string[] sounds;
+        private string library;
+        private int current;
+        private bool loop;
+        private float volume;
+        public bool IsCompleted;
+        public  SoundQueue(AudioSource source, string[] sounds, string lib= "default", bool loop = false, float volume = 0.5f)
         {
-            private AudioSource source;
-            private string[] sounds;
-            private string library;
-            private int current;
+            this.source = source;
+            this.sounds = sounds;
+            this.loop = loop;
+            this.volume = volume;
+            library = lib;
+        }
 
-            public bool IsCompleted;
-            public  SoundQueue(AudioSource source, string[] sounds, string lib= "default")
+        public void Start()
+        {
+            PlaySoundWithSource(source,sounds[0],library,false,volume);
+        }
+
+        public void Update()
+        {
+            if(source.isPlaying && !loop)return;
+            current++;
+            if(current<sounds.Length)
             {
-                this.source = source;
-                this.sounds = sounds;
-                library = lib;
+                PlaySoundWithSource(source, sounds[current],library,false,volume);
             }
-
-            public void Start()
+            else if(loop)
             {
-                PlaySoundWithSource(source,sounds[0],library);
+                current = 0;
+                PlaySoundWithSource(source, sounds[current], library, false, volume);
             }
-
-            public void Update()
+            else
             {
-                if(source.isPlaying)return;
-                current++;
-                if(current<sounds.Length)
-                {
-                    PlaySoundWithSource(source, sounds[current],library);
-                }
-                else
-                {
-                    IsCompleted = true;
-                    Destroy(source);
-                }
+                IsCompleted = true;
+                Destroy(source);
             }
         }
+    }
 
     #endregion
 
@@ -66,7 +79,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
     /// <summary>
     /// This is a sound library you can load sounds into and unload them as well. 
-    /// The library created for the Effects folder is called default and will auto matically be used. 
+    /// The library created for the Effects folder is called default and will automatically be used. 
     /// </summary>
     private Dictionary<string, Dictionary<string, AudioClip>> soundLibrary; 
 
@@ -78,15 +91,17 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
     #region Private Members
     private AudioSource[] soundChannels,
-                            musicChannels;
+                          musicChannels;
 
     private bool initilized;
-    private int prevPriorityChannlesPlaying;
+    private int prevPriorityChannelsPlaying;
     private float[] musicVolumes;
     private List<AudioSource> priorityChannels = new List<AudioSource>(),
                               gameObjectChannels = new List<AudioSource>();
+
     private List<SoundQueue> soundQueues2D = new List<SoundQueue>();
     private List<SoundQueue> soundQueues3D = new List<SoundQueue>();
+
     private Dictionary<AudioSource, Delegate> callbackAudioSource = new Dictionary<AudioSource, Delegate>();
     private Dictionary<AudioSource, Delegate> callback3DAudioSource = new Dictionary<AudioSource, Delegate>(); 
     
@@ -136,12 +151,13 @@ public class SoundManager : ComponentSingleton<SoundManager>
     /*
     * 2D sound functions
     */
-    public static void Play2DSound(string name, float volume = .5f,string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
+    public static void Play2DSound(string name, float volume = .5f,string library = "default", bool loop = false,bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
     {
         try
         {
             var channel = Instance.GetFirstUnusedSoundChannel();
             channel.clip = (Instance.soundLibrary[library.ToLower()][name.ToLower()]);
+            channel.loop = loop;
             channel.volume = volume;
             channel.Play();
 
@@ -157,7 +173,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
        
     }
 
-    public static void Play2DSoudWithCallback(string name, Delegate callBack, float volume = .5f, string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
+    public static void Play2DSoudWithCallback(string name, Delegate callBack, float volume = .5f, string library = "default", bool loop = false,bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
     {
         var channel = Instance.GetFirstUnusedSoundChannel();
         channel.clip = (Instance.soundLibrary[library.ToLower()][name.ToLower()]);
@@ -168,10 +184,10 @@ public class SoundManager : ComponentSingleton<SoundManager>
         if (fadeMusic) FadeAllMusic(fadeTo, fadeTime);
     }
 
-    public static void Play2DSoundQueue(string[] names, float volume = .5f, string library = "default")
+    public static void Play2DSoundQueue(string[] names, float volume = .5f, string library = "default", bool loop = false)
     {
         Debug.Log(names);
-        Instance.soundQueues2D.Add(new SoundQueue(Instance.gameObject.AddComponent<AudioSource>(), names, library));
+        Instance.soundQueues2D.Add(new SoundQueue(Instance.gameObject.AddComponent<AudioSource>(), names, library,loop,volume));
         Instance.soundQueues2D[Instance.soundQueues2D.Count-1].Start();
     }
 
@@ -179,7 +195,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
     * 3D sound functions
     */
 
-    public static void Play3DSoundWithCallback(GameObject source, string soundName, Delegate callBack ,string library = "default", float volume = .5f)
+    public static void Play3DSoundWithCallback(GameObject source, string soundName, Delegate callBack ,string library = "default", bool loop = false, float volume = .5f)
     {
         AudioSource audioSource = source.GetComponent<AudioSource>();
 
@@ -188,11 +204,11 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
 
         Instance.callback3DAudioSource.Add(audioSource,callBack);
-        PlaySoundWithSource(audioSource, soundName, library, volume);
+        PlaySoundWithSource(audioSource, soundName, library, loop, volume);
 
     }
 
-    public static void Play3DSound(GameObject source, string soundName, string library = "default", float volume = .5f)
+    public static void Play3DSound(GameObject source, string soundName, string library = "default", bool loop = false, float volume = .5f)
     {
         AudioSource audioSource = source.GetComponent<AudioSource>();
 
@@ -202,23 +218,24 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
         Instance.gameObjectChannels.Add(audioSource);
 
-        PlaySoundWithSource(audioSource, soundName,library,volume);
+        PlaySoundWithSource(audioSource, soundName,library, loop, volume);
             
     }
 
-    public static void Play3DSoundQueue(string[] names, GameObject source,float volume = .5f, string library = "default")
+    public static void Play3DSoundQueue(string[] names, GameObject source, float volume = .5f, string library = "default", bool loop = false)
     {
         Debug.Log(names);
-        Instance.soundQueues3D.Add(new SoundQueue(source.AddComponent<AudioSource>(), names, library));
+        Instance.soundQueues3D.Add(new SoundQueue(source.AddComponent<AudioSource>(), names, library, loop,volume));
         Instance.soundQueues3D[Instance.soundQueues3D.Count - 1].Start();
     }
 
     //Just a small helper function
-    private static void PlaySoundWithSource(AudioSource src, string clipName, string lib, float volume = .5f)
+    private static void PlaySoundWithSource(AudioSource src, string clipName, string lib, bool loop = false, float volume = .5f)
     {
         Debug.Log("Playing Sound: " + clipName + "From Library: " + lib);
         src.clip = Instance.soundLibrary[lib.ToLower()][clipName.ToLower()];
         src.volume = volume;
+        src.loop = loop;
         src.Play();
     }
 
@@ -319,7 +336,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
     #endregion
   
-    #region RemoveFunctions
+    #region Remove Functions
 
     public void RemoveSoundLibrary(string libraryName)
     {
@@ -455,7 +472,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
             index--;
         }
 
-        if (prevPriorityChannlesPlaying != current && current == 0)
+        if (prevPriorityChannelsPlaying != current && current == 0)
         {
             Debug.Log("No More sound channels fading music back in");
             for (int index = 0; index < Instance.GetMusicChannelsPlaying().Length; index++)
@@ -463,7 +480,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
                 FadeAudioSourceTo(ref Instance.GetMusicChannelsPlaying()[index], 2.0f, musicVolumes[index]);
             }
         }
-        prevPriorityChannlesPlaying = current;
+        prevPriorityChannelsPlaying = current;
     }
 
     private void Update3DCallbacks()

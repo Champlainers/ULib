@@ -55,6 +55,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utility\AudioTrigger.cs" />
     <Compile Include="Utility\ComponentSigleton.cs" />
+    <Compile Include="Utility\InputManager.cs" />
     <Compile Include="Utility\Signleton.cs" />
     <Compile Include="Utility\SoundManager.cs" />
   </ItemGroup>

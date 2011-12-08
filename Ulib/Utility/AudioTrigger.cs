@@ -27,7 +27,7 @@ public class AudioTrigger : MonoBehaviour
 
 	    if (hasBeenTriggered && OneShot) return;
 
-	    SoundManager.Play2DSound(SoundToPlay, SoundVolume, "default", FadeMusic, MusicFadeVolume, 1);
+	    SoundManager.Play2DSound(SoundToPlay, SoundVolume, "default", false,FadeMusic, MusicFadeVolume, 1);
 			
 
 	    hasBeenTriggered = true;
