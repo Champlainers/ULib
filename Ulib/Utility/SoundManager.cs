@@ -22,45 +22,46 @@ public delegate void SoundCallBack();
 
 public class SoundManager : ComponentSingleton<SoundManager>
 {
-#region SoundQueueClass
+    #region Helper Classes
     private class SoundQueue
-    {
-        private AudioSource source;
-        private string[] sounds;
-        private string library;
-        private int current;
-
-        public bool IsCompleted;
-        public  SoundQueue(AudioSource source, string[] sounds, string lib= "default")
         {
-            this.source = source;
-            this.sounds = sounds;
-            library = lib;
-        }
+            private AudioSource source;
+            private string[] sounds;
+            private string library;
+            private int current;
 
-        public void Start()
-        {
-            PlaySound(source,sounds[0],library);
-        }
-
-        public void Update()
-        {
-            if(source.isPlaying)return;
-            current++;
-            if(current<sounds.Length)
+            public bool IsCompleted;
+            public  SoundQueue(AudioSource source, string[] sounds, string lib= "default")
             {
-                PlaySound(source, sounds[current],library);
+                this.source = source;
+                this.sounds = sounds;
+                library = lib;
             }
-            else
+
+            public void Start()
             {
-                IsCompleted = true;
-                Destroy(source);
+                PlaySoundWithSource(source,sounds[0],library);
+            }
+
+            public void Update()
+            {
+                if(source.isPlaying)return;
+                current++;
+                if(current<sounds.Length)
+                {
+                    PlaySoundWithSource(source, sounds[current],library);
+                }
+                else
+                {
+                    IsCompleted = true;
+                    Destroy(source);
+                }
             }
         }
-    }
-#endregion
 
-#region Public Members
+    #endregion
+
+    #region Public Members
     private Dictionary<string, AudioClip>  musicFiles;
 
     /// <summary>
@@ -73,23 +74,26 @@ public class SoundManager : ComponentSingleton<SoundManager>
                NumMusicChannels;
 
     public string SoundDirectory;
-#endregion
+    #endregion
 
-#region Private Members
+    #region Private Members
     private AudioSource[] soundChannels,
-                          musicChannels;
+                            musicChannels;
 
     private bool initilized;
     private int prevPriorityChannlesPlaying;
     private float[] musicVolumes;
-    private List<AudioSource> priorityChannels = new List<AudioSource>(); 
-    private List<SoundQueue> soundQueues = new List<SoundQueue>(); 
-    private Dictionary<AudioSource,Delegate> callbackAudioSource = new Dictionary<AudioSource, Delegate>(); 
+    private List<AudioSource> priorityChannels = new List<AudioSource>(),
+                              gameObjectChannels = new List<AudioSource>();
+    private List<SoundQueue> soundQueues2D = new List<SoundQueue>();
+    private List<SoundQueue> soundQueues3D = new List<SoundQueue>();
+    private Dictionary<AudioSource, Delegate> callbackAudioSource = new Dictionary<AudioSource, Delegate>();
+    private Dictionary<AudioSource, Delegate> callback3DAudioSource = new Dictionary<AudioSource, Delegate>(); 
     
   
-#endregion
+    #endregion
 
-#region Initilization
+    #region Initilization
 
     public void Init(bool loadOnStart, bool dontDestroy, int numMusicChannels = 2, int numSoundChannels = 6, string soundDirectory = "Sounds")
     {
@@ -125,11 +129,14 @@ public class SoundManager : ComponentSingleton<SoundManager>
         LoadMusic();
     }
 
-#endregion
+    #endregion
 
-#region Sounds
+    #region Sounds
 
-    public static void PlaySound(string name, float volume = .5f,string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
+    /*
+    * 2D sound functions
+    */
+    public static void Play2DSound(string name, float volume = .5f,string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
     {
         try
         {
@@ -144,13 +151,13 @@ public class SoundManager : ComponentSingleton<SoundManager>
         catch (Exception e)
         {
             
-           Debug.LogError("There was an error playing sound " + name);
+            Debug.LogError("There was an error playing sound " + name);
             Debug.Log(e.GetType() + " Error  Message: " +e.Message);
         }
        
     }
 
-    public static void PlaySoudWithCallback(string name, Delegate callBack, float volume = .5f, string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
+    public static void Play2DSoudWithCallback(string name, Delegate callBack, float volume = .5f, string library = "default", bool fadeMusic = false, float fadeTo = 0, float fadeTime = 0)
     {
         var channel = Instance.GetFirstUnusedSoundChannel();
         channel.clip = (Instance.soundLibrary[library.ToLower()][name.ToLower()]);
@@ -161,120 +168,173 @@ public class SoundManager : ComponentSingleton<SoundManager>
         if (fadeMusic) FadeAllMusic(fadeTo, fadeTime);
     }
 
-    public static void PlaySoundQueue(string[] names, float volume = .5f, string library = "default")
+    public static void Play2DSoundQueue(string[] names, float volume = .5f, string library = "default")
     {
         Debug.Log(names);
-        Instance.soundQueues.Add(new SoundQueue(Instance.gameObject.AddComponent<AudioSource>(), names, library));
-        Instance.soundQueues[Instance.soundQueues.Count-1].Start();
+        Instance.soundQueues2D.Add(new SoundQueue(Instance.gameObject.AddComponent<AudioSource>(), names, library));
+        Instance.soundQueues2D[Instance.soundQueues2D.Count-1].Start();
     }
 
-    private static void PlaySound(AudioSource src, string clipName, string lib)
+   /*
+    * 3D sound functions
+    */
+
+    public static void Play3DSoundWithCallback(GameObject source, string soundName, Delegate callBack ,string library = "default", float volume = .5f)
+    {
+        AudioSource audioSource = source.GetComponent<AudioSource>();
+
+        if (!audioSource)
+            audioSource = source.AddComponent<AudioSource>();
+
+
+        Instance.callback3DAudioSource.Add(audioSource,callBack);
+        PlaySoundWithSource(audioSource, soundName, library, volume);
+
+    }
+
+    public static void Play3DSound(GameObject source, string soundName, string library = "default", float volume = .5f)
+    {
+        AudioSource audioSource = source.GetComponent<AudioSource>();
+
+        if (!audioSource)
+            audioSource = source.AddComponent<AudioSource>();
+            
+
+        Instance.gameObjectChannels.Add(audioSource);
+
+        PlaySoundWithSource(audioSource, soundName,library,volume);
+            
+    }
+
+    public static void Play3DSoundQueue(string[] names, GameObject source,float volume = .5f, string library = "default")
+    {
+        Debug.Log(names);
+        Instance.soundQueues3D.Add(new SoundQueue(source.AddComponent<AudioSource>(), names, library));
+        Instance.soundQueues3D[Instance.soundQueues3D.Count - 1].Start();
+    }
+
+    //Just a small helper function
+    private static void PlaySoundWithSource(AudioSource src, string clipName, string lib, float volume = .5f)
     {
         Debug.Log("Playing Sound: " + clipName + "From Library: " + lib);
         src.clip = Instance.soundLibrary[lib.ToLower()][clipName.ToLower()];
+        src.volume = volume;
         src.Play();
     }
 
-#endregion
+    #endregion
 
-#region Music
+    #region Music
 
-    public static void PlayMusic(string name, float volume = .5f, bool loop = false)
-    {
+        public static void PlayMusic(string name, float volume = .5f, bool loop = false)
+        {
 
-        Debug.Log("Playing Music");
-        AudioSource scr = Instance.GetFirstUnusedMusicChannel();
-        scr.clip = Instance.musicFiles[name.ToLower()];
-        scr.volume = volume;
-        scr.loop = loop;
-        scr.Play();
+            Debug.Log("Playing Music");
+            AudioSource scr = Instance.GetFirstUnusedMusicChannel();
+            scr.clip = Instance.musicFiles[name.ToLower()];
+            scr.volume = volume;
+            scr.loop = loop;
+            scr.Play();
 
-    }
+        }
 
-    public static void PlayMusicCrossFade(string name, float volume, float time)
-    {
-       // if (Instance.musicChannels.Any(musicChannel => musicChannel.clip != null && musicChannel.clip.name == name)) return;
+        public static void PlayMusicCrossFade(string name, float volume, float time)
+        {
+           // if (Instance.musicChannels.Any(musicChannel => musicChannel.clip != null && musicChannel.clip.name == name)) return;
 
-        AudioSource scr = Instance.GetFirstUnusedMusicChannel();
-        if(scr == null)return;
-        scr.clip = Instance.musicFiles[name.ToLower()];
-        scr.volume = .25f;
+            AudioSource scr = Instance.GetFirstUnusedMusicChannel();
+            if(scr == null)return;
+            scr.clip = Instance.musicFiles[name.ToLower()];
+            scr.volume = .25f;
        
-        AudioSource crossFadeTarget = Instance.GetMusicChannelPlaying(); 
-        scr.Play();
-        if (crossFadeTarget != null)
-        {
-            Debug.Log("CrossFading From" + crossFadeTarget.clip.name + " To " + scr.name);
-            CrossFadeChannels(scr, crossFadeTarget, time, volume, 0.0f);
+            AudioSource crossFadeTarget = Instance.GetMusicChannelPlaying(); 
+            scr.Play();
+            if (crossFadeTarget != null)
+            {
+                Debug.Log("CrossFading From" + crossFadeTarget.clip.name + " To " + scr.name);
+                CrossFadeChannels(scr, crossFadeTarget, time, volume, 0.0f);
+            }
+            else
+            {
+                Debug.Log("Fading " + scr.clip.name + " To " + volume);
+                FadeAudioSourceTo(ref scr, time, volume);
+            }
         }
-        else
+
+        public static void PlayMusicCrossFade(string name, string crossFadeTargetName,float volume, float time)
         {
-            Debug.Log("Fading " + scr.clip.name + " To " + volume);
-            FadeAudioSourceTo(ref scr, time, volume);
-        }
-    }
+            // if (Instance.musicChannels.Any(musicChannel => musicChannel.clip != null && musicChannel.clip.name == name)) return;
 
-    public static void PlayMusicCrossFade(string name, string crossFadeTargetName,float volume, float time)
-    {
-        // if (Instance.musicChannels.Any(musicChannel => musicChannel.clip != null && musicChannel.clip.name == name)) return;
-
-        AudioSource scr = Instance.GetFirstUnusedMusicChannel();
-        if (scr == null) return;
-        scr.clip = Instance.musicFiles[name.ToLower()];
-        scr.volume = .25f;
+            AudioSource scr = Instance.GetFirstUnusedMusicChannel();
+            if (scr == null) return;
+            scr.clip = Instance.musicFiles[name.ToLower()];
+            scr.volume = .25f;
        
-        AudioSource crossFadeTarget = Instance.GetMusicChannelPlaying();
-        scr.Play();
-        if (crossFadeTarget != null)
-        {
-            Debug.Log("CrossFading From" + crossFadeTarget.clip.name + " To " + scr.name);
-            CrossFadeChannels(scr, crossFadeTarget, time, volume, 0.0f);
+            AudioSource crossFadeTarget = Instance.GetMusicChannelPlaying();
+            scr.Play();
+            if (crossFadeTarget != null)
+            {
+                Debug.Log("CrossFading From" + crossFadeTarget.clip.name + " To " + scr.name);
+                CrossFadeChannels(scr, crossFadeTarget, time, volume, 0.0f);
+            }
+            else
+            {
+                Debug.Log("Fading "+ scr.clip.name + " To " + volume);
+                FadeAudioSourceTo(ref scr, time, volume);
+            }
         }
+
+        public static void PlayMusicCrossFadeAll(string name, float volume, float time)
+        { 
+            AudioSource scr = Instance.GetFirstUnusedMusicChannel();
+            if (scr == null) return;
+            scr.clip = Instance.musicFiles[name.ToLower()];
+            scr.volume = .25f;
+            FadeAudioSourceTo(ref scr,time,volume);
+            for (int index = 0; index < Instance.GetMusicChannelsPlaying().Length; index++)
+            {
+                FadeAudioSourceOut(ref Instance.GetMusicChannelsPlaying()[index], time, 0.0f);
+            }
+            scr.Play();
+        } 
+    
+        public static void PauseMusic(string name)
+        {
+            AudioSource scr = Instance.GetFirstUnusedMusicChannel();
+            scr.clip = Instance.musicFiles[name.ToLower()];
+            scr.Pause();
+        }
+
+        public static void FadeAllMusic(float volume, float time)
+        {
+            Debug.Log("Fadingout");
+
+            for (int index = 0; index < Instance.GetMusicChannelsPlaying().Length; index++)
+            {
+                Debug.Log("Fading out channel: " + index);
+                Instance.musicVolumes[index] = Instance.GetMusicChannelsPlaying()[index].volume;
+                FadeAudioSourceTo(ref Instance.GetMusicChannelsPlaying()[index], time, volume);
+            }
+        }
+
+    #endregion
+  
+    #region RemoveFunctions
+
+    public void RemoveSoundLibrary(string libraryName)
+    {
+        if(soundLibrary.ContainsKey(libraryName))
+            soundLibrary.Remove(libraryName);
         else
-        {
-            Debug.Log("Fading "+ scr.clip.name + " To " + volume);
-            FadeAudioSourceTo(ref scr, time, volume);
-        }
+            Debug.LogError("No Library found with name: " + libraryName);
+        
     }
 
-    public static void PlayMusicCrossFadeAll(string name, float volume, float time)
-    { 
-        AudioSource scr = Instance.GetFirstUnusedMusicChannel();
-        if (scr == null) return;
-        scr.clip = Instance.musicFiles[name.ToLower()];
-        scr.volume = .25f;
-        FadeAudioSourceTo(ref scr,time,volume);
-        for (int index = 0; index < Instance.GetMusicChannelsPlaying().Length; index++)
-        {
-            FadeAudioSourceOut(ref Instance.GetMusicChannelsPlaying()[index], time, 0.0f);
-        }
-        scr.Play();
-    } 
-    
-    public static void PauseMusic(string name)
-    {
-        AudioSource scr = Instance.GetFirstUnusedMusicChannel();
-        scr.clip = Instance.musicFiles[name.ToLower()];
-        scr.Pause();
-    }
+        #endregion  
 
-    public static void FadeAllMusic(float volume, float time)
-    {
-        Debug.Log("Fadingout");
+    #region Private Functions
 
-        for (int index = 0; index < Instance.GetMusicChannelsPlaying().Length; index++)
-        {
-            Debug.Log("Fading out channel: " + index);
-            Instance.musicVolumes[index] = Instance.GetMusicChannelsPlaying()[index].volume;
-            FadeAudioSourceTo(ref Instance.GetMusicChannelsPlaying()[index], time, volume);
-        }
-    }
-
-#endregion
-    
-#region Private Memebers
-
-#region Load Functions
+    #region Load Functions
 
     private void LoadSounds(string Library = "default", string Directory = "Effects")
     {
@@ -304,29 +364,16 @@ public class SoundManager : ComponentSingleton<SoundManager>
     }
 
 
-    #endregion
+        #endregion
 
-#region RemoveFunctions
-
-    public void RemoveSoundLibrary(string libraryName)
-    {
-        if(soundLibrary.ContainsKey(libraryName))
-            soundLibrary.Remove(libraryName);
-        else
-            Debug.LogError("No Library found with name: " + libraryName);
-        
-    }
-
-    #endregion
-
-#region Helpers
+    #region Helpers
 
     private AudioSource GetFirstUnusedSoundChannel()
     {
         foreach (var sc in soundChannels.Where(sc => !sc.isPlaying))
             return sc;
       
-        Debug.LogError("No Useable Channels found");
+        Debug.LogError("No Channels found");
         return null;
     }
 
@@ -335,7 +382,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
         foreach (var sc in musicChannels.Where(sc => !sc.isPlaying))
             return sc;
 
-        Debug.LogError("No Useable Channels found");
+        Debug.LogError("No Channels found");
         return null;
     }
 
@@ -344,7 +391,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
         foreach (var sc in musicChannels.Where(sc => sc.isPlaying && sc.name == clipName))
             return sc;
 
-        Debug.LogError("No Useable Channels found");
+        Debug.LogError("No channel found playing: " + clipName);
         return null;
     }
 
@@ -362,41 +409,37 @@ public class SoundManager : ComponentSingleton<SoundManager>
         foreach (var sc in musicChannels.Where(sc => sc.isPlaying))
             return sc;
 
-        Debug.LogError("No Useable Channels found");
+        Debug.LogError("No Channels found");
         return null;
     }
-#endregion
+    #endregion
 
-#region Update
-    void Update()
+    #region Update
+
+    private void Update()
     {
-       
-       UpdatePriorityChannels();
-       UpdateCallbacks();
-       UpdateQueues();
+        Update3DChannels();
+        UpdatePriorityChannels();
+        Update2DCallbacks();
+        Update3DCallbacks();
+        Update2DQueues();
+        Update3DQueues();
     }
 
-    void UpdateCallbacks()
+    private void Update3DChannels()
     {
-        if (callbackAudioSource.Count == 0) return;
-        List<AudioSource> completed = new List<AudioSource>();
-        foreach(KeyValuePair<AudioSource, Delegate> pair in callbackAudioSource)
+        for (int i = 0; i < gameObjectChannels.Count; i++)
         {
-            if (pair.Key.isPlaying) continue;
-            completed.Add(pair.Key);
-            pair.Value.DynamicInvoke();
-            completed.Add(pair.Key);
-        }
+            if(gameObjectChannels[i].isPlaying)continue;
 
-        foreach (var audioSource in completed)
-        {
-             callbackAudioSource.Remove(audioSource);
+            Destroy(gameObjectChannels[i]);
+            gameObjectChannels.Remove(gameObjectChannels[i]);
         }
     }
 
-    void UpdatePriorityChannels()
+    private void UpdatePriorityChannels()
     {
-         int current = 0;
+            int current = 0;
 
         for (int index = 0; index < priorityChannels.Count; index++)
         {
@@ -423,45 +466,94 @@ public class SoundManager : ComponentSingleton<SoundManager>
         prevPriorityChannlesPlaying = current;
     }
 
-    void UpdateQueues()
+    private void Update3DCallbacks()
     {
-        for (int index = 0; index < soundQueues.Count; index++)
+        if (callback3DAudioSource.Count == 0) return;
+        List<AudioSource> completed = new List<AudioSource>();
+        foreach (KeyValuePair<AudioSource, Delegate> pair in callback3DAudioSource)
         {
-            soundQueues[index].Update();
-            
-            if(!soundQueues[index].IsCompleted)return;
+            if (pair.Key.isPlaying) continue;
+            completed.Add(pair.Key);
+            pair.Value.DynamicInvoke();
+            completed.Add(pair.Key);
+        }
 
-            soundQueues.Remove(soundQueues[index]);
+        foreach (var audioSource in completed)
+        {
+            callbackAudioSource.Remove(audioSource);
+        }
+    }
+
+    private void Update2DCallbacks()
+    {
+        if (callbackAudioSource.Count == 0) return;
+        List<AudioSource> completed = new List<AudioSource>();
+        foreach(KeyValuePair<AudioSource, Delegate> pair in callbackAudioSource)
+        {
+            if (pair.Key.isPlaying) continue;
+            completed.Add(pair.Key);
+            pair.Value.DynamicInvoke();
+            completed.Add(pair.Key);
+        }
+
+        foreach (var audioSource in completed)
+        {
+                callbackAudioSource.Remove(audioSource);
+        }
+    }
+
+    private void Update2DQueues()
+    {
+        for (int index = 0; index < soundQueues2D.Count; index++)
+        {
+            soundQueues2D[index].Update();
+
+            if (!soundQueues2D[index].IsCompleted) return;
+
+            soundQueues2D.Remove(soundQueues2D[index]);
             index--;
         }
     }
 
-#endregion
-
-#region Fades
-    private void StopOnFadeOut(AudioSource source)
+    private void Update3DQueues()
     {
-        Debug.Log("Stopping Playback of: " + source.clip.name);
-        source.Stop();
-        source.clip = null;
+        for (int index = 0; index < soundQueues3D.Count; index++)
+        {
+            soundQueues3D[index].Update();
+
+            if (!soundQueues3D[index].IsCompleted) return;
+
+            soundQueues3D.Remove(soundQueues3D[index]);
+            index--;
+        }
     }
 
-    private static void FadeAudioSourceTo(ref AudioSource source, float time, float fadeTo)
-    {
-        iTween.AudioTo(source.gameObject,iTween.Hash("audiosource",source,"time",time, "volume",fadeTo,"easetype",iTween.EaseType.linear));
-    }
+    #endregion
 
-    private static void FadeAudioSourceOut(ref AudioSource source, float time, float fadeTo)
-    {
-        Debug.Log("Fading source out");
-        iTween.AudioTo(source.gameObject, iTween.Hash("audiosource", source, "time", time, "volume", fadeTo, "easetype", iTween.EaseType.linear, "oncomplete", "StopOnFadeOut", "oncompleteparams", source, "oncompletetarget", source.gameObject));
-    }
+    #region Fades
+        private void StopOnFadeOut(AudioSource source)
+        {
+            Debug.Log("Stopping Playback of: " + source.clip.name);
+            source.Stop();
+            source.clip = null;
+        }
 
-    private static void CrossFadeChannels(AudioSource to,AudioSource from, float time, float maxVolume, float minVolume)
-    {
-        FadeAudioSourceTo(ref to, time, maxVolume);
-        FadeAudioSourceOut(ref from, time, minVolume);
-    }
-#endregion
-#endregion
+        private static void FadeAudioSourceTo(ref AudioSource source, float time, float fadeTo)
+        {
+            iTween.AudioTo(source.gameObject,iTween.Hash("audiosource",source,"time",time, "volume",fadeTo,"easetype",iTween.EaseType.linear));
+        }
+
+        private static void FadeAudioSourceOut(ref AudioSource source, float time, float fadeTo)
+        {
+            Debug.Log("Fading source out");
+            iTween.AudioTo(source.gameObject, iTween.Hash("audiosource", source, "time", time, "volume", fadeTo, "easetype", iTween.EaseType.linear, "oncomplete", "StopOnFadeOut", "oncompleteparams", source, "oncompletetarget", source.gameObject));
+        }
+
+        private static void CrossFadeChannels(AudioSource to,AudioSource from, float time, float maxVolume, float minVolume)
+        {
+            FadeAudioSourceTo(ref to, time, maxVolume);
+            FadeAudioSourceOut(ref from, time, minVolume);
+        }
+    #endregion
+    #endregion
 }
