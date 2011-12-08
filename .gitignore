@@ -1,13 +1,13 @@
 
-/ULib/_ReSharper.ULib/*
+/ULib/_ReSharper.ULib/
 
-/ULib/bin/*
-/ULib/obj/*
+/ULib/bin/
+/ULib/obj/
 
-/Testbed/Temp/*
-/Testbed/Library/*
-/Testbed/obj/*
-/Testbed/_ReSharper.TestBed/*
+/Testbed/Temp/
+/Testbed/Library/
+/Testbed/obj/
+/Testbed/_ReSharper.TestBed/
 
 
 !Testbed/Library/*.asset
@@ -20,3 +20,8 @@
 !Testbed/Library/guidmapper
 !Testbed/Library/unity default resources
 !Testbed/Library/unity editor resources
+
+/TestBed/Library/
+/Ulib/_ReSharper.ULib/
+/TestBed/Temp/
+/Ulib/obj/Debug/
