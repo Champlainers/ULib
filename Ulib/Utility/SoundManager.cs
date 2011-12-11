@@ -90,6 +90,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
     #endregion
 
     #region Private Members
+
     private AudioSource[] soundChannels,
                           musicChannels;
 
@@ -99,11 +100,11 @@ public class SoundManager : ComponentSingleton<SoundManager>
     private List<AudioSource> priorityChannels = new List<AudioSource>(),
                               gameObjectChannels = new List<AudioSource>();
 
-    private List<SoundQueue> soundQueues2D = new List<SoundQueue>();
-    private List<SoundQueue> soundQueues3D = new List<SoundQueue>();
+    private List<SoundQueue> soundQueues2D = new List<SoundQueue>(),
+                             soundQueues3D = new List<SoundQueue>();
 
-    private Dictionary<AudioSource, Delegate> callbackAudioSource = new Dictionary<AudioSource, Delegate>();
-    private Dictionary<AudioSource, Delegate> callback3DAudioSource = new Dictionary<AudioSource, Delegate>(); 
+    private Dictionary<AudioSource, Delegate> callback2DAudioSource = new Dictionary<AudioSource, Delegate>(),
+                                              callback3DAudioSource = new Dictionary<AudioSource, Delegate>(); 
     
   
     #endregion
@@ -180,7 +181,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
         channel.volume = volume;
         channel.Play();
 
-        Instance.callbackAudioSource.Add(channel,callBack);
+        Instance.callback2DAudioSource.Add(channel,callBack);
         if (fadeMusic) FadeAllMusic(fadeTo, fadeTime);
     }
 
@@ -497,15 +498,15 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
         foreach (var audioSource in completed)
         {
-            callbackAudioSource.Remove(audioSource);
+            callback2DAudioSource.Remove(audioSource);
         }
     }
 
     private void Update2DCallbacks()
     {
-        if (callbackAudioSource.Count == 0) return;
+        if (callback2DAudioSource.Count == 0) return;
         List<AudioSource> completed = new List<AudioSource>();
-        foreach(KeyValuePair<AudioSource, Delegate> pair in callbackAudioSource)
+        foreach(KeyValuePair<AudioSource, Delegate> pair in callback2DAudioSource)
         {
             if (pair.Key.isPlaying) continue;
             completed.Add(pair.Key);
@@ -515,7 +516,7 @@ public class SoundManager : ComponentSingleton<SoundManager>
 
         foreach (var audioSource in completed)
         {
-                callbackAudioSource.Remove(audioSource);
+                callback2DAudioSource.Remove(audioSource);
         }
     }
 

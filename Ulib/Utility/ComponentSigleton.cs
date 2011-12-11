@@ -9,7 +9,5 @@ public class ComponentSingleton<T> : MonoBehaviour where T : MonoBehaviour
         get { return instance ?? (instance = new GameObject(typeof(T).ToString()).AddComponent<T>()); }
     }
 
-    public virtual void Init()
-    {
-    }
+    public virtual void Init(){}
 }

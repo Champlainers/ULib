@@ -49,6 +49,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Debug\DebugConsole.cs" />
     <Compile Include="PixelPlacement\iTween.cs" />
     <Compile Include="PixelPlacement\iTweenPath\Editor\iTweenPathEditor.cs" />
     <Compile Include="PixelPlacement\iTweenPath\iTweenPath.cs" />

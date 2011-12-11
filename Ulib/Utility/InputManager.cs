@@ -64,6 +64,7 @@ public class KeyboardInputManager : ComponentSingleton<KeyboardInputManager>
         }
     }
     
+    #region  Helpers
     private static void SubscribePressed(KeyCode key, KeyEvent listener)
     {
         if(!Instance.keyPressEvents.ContainsKey(key))
@@ -111,7 +112,7 @@ public class KeyboardInputManager : ComponentSingleton<KeyboardInputManager>
 
         Instance.keyPressEvents[key] -= listener;
     }
-
+    #endregion
     public void Update()
     {
         foreach (KeyValuePair<KeyCode, KeyEvent> keyboardPressed in keyPressEvents)
